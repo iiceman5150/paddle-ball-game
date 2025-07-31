@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minimalistic Paddle and Ball Game</title>
+<style>
+  /* Basic page styling */
+  body {
+    margin: 0;
+    background: #f0f0f0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Score display */
+  #score {
+    margin-top: 10px;
+    font-size: 1.2rem;
+    color: #333;
+  }
+
+  /* Game canvas */
+  #gameCanvas {
+    background: #ffffff;
+    border: 1px solid #ddd;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+  }
+
+  /* Game over overlay */
+  #gameOver {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.5rem;
+    z-index: 10;
+    display: none; /* hidden by default */
+  }
+
+  #restartBtn {
+    margin-top: 15px;
+    padding: 10px 20px;
+    border: none;
+    background-color: #007bff;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+
+  #restartBtn:hover {
+    background-color: #0056b3;
+  }
+</style>
+</head>
+<body>
+  <!-- Score display -->
+  <div id="score">Score: 0</div>
+  <!-- Game canvas where everything is drawn -->
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <!-- Game over overlay -->
+  <div id="gameOver">
+    <div id="gameOverText">Game Over</div>
+    <div id="finalScore"></div>
+    <button id="restartBtn">Restart</button>
+  </div>
+
+<script>
+  // Grab references to DOM elements
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  const scoreDisplay = document.getElementById('score');
+  const gameOverOverlay = document.getElementById('gameOver');
+  const finalScoreDisplay = document.getElementById('finalScore');
+  const restartBtn = document.getElementById('restartBtn');
+
+  // Game state variables
+  let paddle, ball, score, animationId;
+
+  // Paddle object definition
+  function createPaddle() {
+    return {
+      width: 80,
+      height: 10,
+      x: canvas.width / 2 - 40,
+      y: canvas.height - 30,
+      speed: 8,
+      dx: 0
+    };
+  }
+
+  // Ball object definition
+  function createBall() {
+    return {
+      x: canvas.width / 2,
+      y: canvas.height / 2,
+      radius: 8,
+      speed: 4,
+      dx: 3,
+      dy: -3
+    };
+  }
+
+  // Initialize game state
+  function init() {
+    paddle = createPaddle();
+    ball = createBall();
+    score = 0;
+    scoreDisplay.textContent = 'Score: ' + score;
+    gameOverOverlay.style.display = 'none';
+
+    // Start the animation loop
+    cancelAnimationFrame(animationId);
+    animationId = requestAnimationFrame(update);
+  }
+
+  // Draw paddle on canvas
+  function drawPaddle() {
+    ctx.fillStyle = '#007bff';
+    ctx.fillRect(paddle.x, paddle.y, paddle.width, paddle.height);
+  }
+
+  // Draw ball on canvas
+  function drawBall() {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#333';
+    ctx.fill();
+    ctx.closePath();
+  }
+
+  // Update paddle position
+  function updatePaddlePosition() {
+    paddle.x += paddle.dx;
+
+    // Keep paddle within the canvas boundaries
+    if (paddle.x < 0) paddle.x = 0;
+    if (paddle.x + paddle.width > canvas.width) {
+      paddle.x = canvas.width - paddle.width;
+    }
+  }
+
+  // Update ball position and handle collisions
+  function updateBallPosition() {
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+
+    // Wall collisions (left/right)
+    if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+      ball.dx *= -1;
+    }
+
+    // Top wall collision
+    if (ball.y - ball.radius < 0) {
+      ball.dy *= -1;
+    }
+
+    // Paddle collision
+    if (
+      ball.y + ball.radius > paddle.y &&
+      ball.x > paddle.x &&
+      ball.x < paddle.x + paddle.width &&
+      ball.dy > 0
+    ) {
+      ball.dy *= -1;
+      // Increase score when ball hits paddle
+      score += 1;
+      scoreDisplay.textContent = 'Score: ' + score;
+    }
+
+    // Bottom wall (game over)
+    if (ball.y - ball.radius > canvas.height) {
+      endGame();
+    }
+  }
+
+  // Clear the canvas
+  function clearCanvas() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  // Main update loop
+  function update() {
+    clearCanvas();
+    drawPaddle();
+    drawBall();
+
+    updatePaddlePosition();
+    updateBallPosition();
+
+    // Continue animation if game not over
+    animationId = requestAnimationFrame(update);
+  }
+
+  // End the game and show game over screen
+  function endGame() {
+    cancelAnimationFrame(animationId);
+    finalScoreDisplay.textContent = 'Final Score: ' + score;
+    gameOverOverlay.style.display = 'flex';
+  }
+
+  // Keyboard controls for desktop
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+      paddle.dx = -paddle.speed;
+    } else if (e.key === 'ArrowRight') {
+      paddle.dx = paddle.speed;
+    }
+  });
+
+  document.addEventListener('keyup', function(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      paddle.dx = 0;
+    }
+  });
+
+  // Touch controls for mobile
+  canvas.addEventListener('touchstart', handleTouch);
+  canvas.addEventListener('touchmove', handleTouch);
+
+  function handleTouch(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touchX = e.touches[0].clientX - rect.left;
+    // Center the paddle under the touch point
+    paddle.x = touchX - paddle.width / 2;
+
+    // Ensure the paddle stays within bounds
+    if (paddle.x < 0) paddle.x = 0;
+    if (paddle.x + paddle.width > canvas.width) paddle.x = canvas.width - paddle.width;
+
+    e.preventDefault();
+  }
+
+  // Restart button event
+  restartBtn.addEventListener('click', function() {
+    init();
+  });
+
+  // Start the game on load
+  init();
+</script>
+</body>
+</html>
